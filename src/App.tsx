@@ -1,26 +1,43 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
+import { amber } from '@material-ui/core/colors';
 
-function App() {
+import Header from 'components/Header';
+import IngredientsPanel from 'components/IngredientsPanel';
+import SandwichesPanel from 'components/SandwichesPanel';
+import { FoodProvider } from 'food';
+
+const theme = createMuiTheme({
+  palette: {
+    primary: {
+      main: amber[700],
+    },
+  },
+});
+
+const App = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
+    <FoodProvider>
+      <ThemeProvider theme={theme}>
+        <Header />
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginBottom: '100px',
+          }}
         >
-          Learn React
-        </a>
-      </header>
-    </div>
+          <div style={{ display: 'flex', flexDirection: 'row' }}>
+            <IngredientsPanel />
+            <SandwichesPanel />
+          </div>
+        </div>
+      </ThemeProvider>
+    </FoodProvider>
   );
-}
+};
 
 export default App;
