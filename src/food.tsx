@@ -1,36 +1,41 @@
 import React, { useCallback, useContext, useState } from 'react';
+import { Ingredient, Sandwich } from 'types';
 
-const foodState = {
-  ingredients: new Array<{ name: string; emoji: string }>(),
-  sandwiches: new Array<string>(),
+export interface FoodState {
+  ingredients: Ingredient[];
+  sandwiches: Sandwich[];
+  setIngredients: (ingredients: Ingredient[]) => void;
+  setSandwiches: (sandwiches: Sandwich[]) => void;
+}
+
+const initialFoodState: FoodState = {
+  ingredients: [],
+  sandwiches: [],
+  setIngredients: () => {},
+  setSandwiches: () => {},
 };
 
-const foodContext = {
-  state: foodState,
-  setFood: (newState: typeof foodState) => {},
-};
-
-export const FoodContext = React.createContext(foodContext);
+const FoodContext = React.createContext(initialFoodState);
 
 export const useFood = () => useContext(FoodContext);
 
-export const useFoo = () => {
-  const [food, setFood] = useState(foodState);
-  return { food, setFood };
-};
-
 export const FoodProvider = ({ children }: { children: React.ReactNode }) => {
-  const [food, setFood] = useState(foodState);
+  const [food, setFood] = useState(initialFoodState);
+
+  const setIngredients = useCallback(
+    (ingredients: Ingredient[]) =>
+      setFood((prevState) => ({ ...prevState, ingredients })),
+    [],
+  );
+
+  const setSandwiches = useCallback(
+    (sandwiches: Sandwich[]) =>
+      setFood((prevState) => ({ ...prevState, sandwiches })),
+    [],
+  );
+
   return (
-    <FoodContext.Provider
-      value={{
-        state: food,
-        setFood: (x: any) => {
-          console.log('NEW_FOOD:', x);
-          setFood(x);
-        },
-      }}
-    >
+    <FoodContext.Provider value={{ ...food, setIngredients, setSandwiches }}>
       {children}
     </FoodContext.Provider>
   );

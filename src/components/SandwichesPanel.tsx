@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import Card from '@material-ui/core/Card';
 import CardActions from '@material-ui/core/CardActions';
@@ -11,6 +11,9 @@ import MenuItem from '@material-ui/core/MenuItem';
 import FormHelperText from '@material-ui/core/FormHelperText';
 import FormControl from '@material-ui/core/FormControl';
 import Select from '@material-ui/core/Select';
+import { fetchSandwiches, postSandwich } from 'requests';
+import { useFood } from 'food';
+import { Ingredient } from 'types';
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -22,18 +25,37 @@ const useStyles = makeStyles((theme) => ({
     display: 'flex',
     flexDirection: 'column',
   },
-  name: {},
 }));
 
 const SandwichesPanel = () => {
   const classes = useStyles();
-  const [bread, setBread] = React.useState('');
-  const [condiments, setCondiments] = React.useState<string[]>([]);
-  const [layers, setLayers] = React.useState<string[]>([]);
 
-  const handleChange = (event: any) => {
-    setBread(event.target.value);
-  };
+  const [foo, setFoo] = useState<Ingredient>({ name: '', emoji: '' });
+
+  const [name, setName] = useState('');
+  const [bread, setBread] = useState<Ingredient>({ name: '', emoji: '' });
+  const [condiments, setCondiments] = useState<Ingredient[]>([]);
+  const [layers, setLayers] = useState<Ingredient[]>([]);
+
+  const { ingredients, sandwiches, setSandwiches } = useFood();
+
+  const refreshSandwiches = () =>
+    fetchSandwiches().then((newSandwiches) => setSandwiches(newSandwiches));
+
+  useEffect(() => {
+    refreshSandwiches();
+  }, []); // eslint-disable-line
+
+  const ingredientMenuItems = [
+    <MenuItem key="none" value="">
+      <em>None</em>
+    </MenuItem>,
+    ...ingredients.map(({ name, emoji }) => (
+      <MenuItem key={name} value={name}>
+        {name} {emoji}
+      </MenuItem>
+    )),
+  ];
 
   return (
     <Card className={classes.root}>
@@ -77,15 +99,28 @@ const SandwichesPanel = () => {
       </CardContent>
 
       <CardActions>
-        <form className={classes.form} onSubmit={(ev) => ev.preventDefault()}>
+        <form
+          className={classes.form}
+          onSubmit={(ev) => {
+            ev.preventDefault();
+            postSandwich({ name, bread, condiments, layers }).then(() => {
+              refreshSandwiches();
+              setName('');
+              setBread({ name: '', emoji: '' });
+              setCondiments([]);
+              setLayers([]);
+            });
+          }}
+        >
           <div style={{ display: 'flex', flexDirection: 'row', width: '100%' }}>
             <TextField
-              className={classes.name}
               size="small"
               label="Name"
               variant="outlined"
               required
               style={{ flex: 1 }}
+              value={name}
+              onChange={(ev) => setName(ev.target.value)}
             />
 
             <div style={{ width: '16px' }} />
@@ -93,17 +128,14 @@ const SandwichesPanel = () => {
             <FormControl variant="outlined" size="small" style={{ flex: 1 }}>
               <InputLabel id="bread-label">Bread</InputLabel>
               <Select
+                id="bread"
+                label="Bread"
                 labelId="bread-label"
                 value={bread}
-                onChange={handleChange}
+                onChange={(ev) => setBread(ev.target.value as any)}
                 variant="outlined"
               >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                <MenuItem value={10}>Ten</MenuItem>
-                <MenuItem value={20}>Twenty</MenuItem>
-                <MenuItem value={30}>Thirty</MenuItem>
+                {ingredientMenuItems}
               </Select>
             </FormControl>
           </div>
@@ -119,35 +151,54 @@ const SandwichesPanel = () => {
                 justifyContent: 'flex-start',
               }}
             >
-              {condiments.concat('').map((condiment, idx) => (
-                <FormControl
-                  key={`condiment-${idx}`}
-                  variant="outlined"
-                  size="small"
-                  style={{ width: '100%', marginBottom: '16px' }}
-                >
-                  <InputLabel id={`condiment-label-${idx}`}>
-                    Condiment {idx}
-                  </InputLabel>
-                  <Select
-                    labelId={`condiment-label-${idx}`}
-                    value={condiment}
-                    onChange={() => {
-                      if (idx === condiments.length) {
-                        setCondiments(condiments.concat(''));
-                      }
-                    }}
+              {condiments
+                .concat({ name: '', emoji: '' })
+                .map((condiment, idx) => (
+                  <FormControl
+                    key={`condiment-${idx}`}
                     variant="outlined"
+                    size="small"
+                    style={{ width: '100%', marginBottom: '16px' }}
                   >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    <MenuItem value={10}>Ten</MenuItem>
-                    <MenuItem value={20}>Twenty</MenuItem>
-                    <MenuItem value={30}>Thirty</MenuItem>
-                  </Select>
-                </FormControl>
-              ))}
+                    <InputLabel id={`condiment-${idx}-label`}>
+                      Condiment {idx}
+                    </InputLabel>
+                    <Select
+                      id={`condiment-${idx}`}
+                      label={`Condiment ${idx}`}
+                      labelId={`condiment-${idx}-label`}
+                      value={condiment}
+                      // value={condiment.name.replace(/ /, '_')}
+                      // value="foo bar"
+                      onChange={(ev) => {
+                        const condimentName = ev.target.value as string;
+
+                        console.log(condimentName);
+                        console.log(condiment);
+                        console.log('------');
+                        console.log(bread);
+
+                        const condimentX = condiments.find(
+                          (c) => c.name === condimentName,
+                        )!;
+                        if (idx === condiments.length) {
+                          const newCondiments = condiments.map((c, cIdx) =>
+                            cIdx === idx ? condimentX : c,
+                          );
+                          setCondiments(newCondiments);
+                          // setCondiments(
+                          //   newCondiments.concat({ name: '', emoji: '' }),
+                          // );
+                        }
+                      }}
+                      // value={foo}
+                      // onChange={(ev) => setFoo(ev.target.value as any)}
+                      variant="outlined"
+                    >
+                      {ingredientMenuItems}
+                    </Select>
+                  </FormControl>
+                ))}
             </div>
 
             <div style={{ width: '16px' }} />
@@ -160,30 +211,27 @@ const SandwichesPanel = () => {
                 justifyContent: 'flex-start',
               }}
             >
-              {layers.concat('').map((layer, idx) => (
+              {layers.concat({ name: '', emoji: '' }).map((layer, idx) => (
                 <FormControl
                   key={`layer-${idx}`}
                   variant="outlined"
                   size="small"
                   style={{ width: '100%', marginBottom: '16px' }}
                 >
-                  <InputLabel id={`layer-label-${idx}`}>Layer {idx}</InputLabel>
+                  <InputLabel id={`layer-${idx}-label`}>Layer {idx}</InputLabel>
                   <Select
-                    labelId={`layer-label-${idx}`}
+                    id={`layer-${idx}`}
+                    label={`Layer ${idx}`}
+                    labelId={`layer-${idx}-label`}
                     value={layer}
                     onChange={() => {
                       if (idx === layers.length) {
-                        setLayers(layers.concat(''));
+                        setLayers(layers.concat({ name: '', emoji: '' }));
                       }
                     }}
                     variant="outlined"
                   >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    <MenuItem value={10}>Ten</MenuItem>
-                    <MenuItem value={20}>Twenty</MenuItem>
-                    <MenuItem value={30}>Thirty</MenuItem>
+                    {ingredientMenuItems}
                   </Select>
                 </FormControl>
               ))}

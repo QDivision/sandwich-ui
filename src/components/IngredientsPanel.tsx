@@ -8,6 +8,7 @@ import Button from '@material-ui/core/Button';
 import Typography from '@material-ui/core/Typography';
 import TextField from '@material-ui/core/TextField';
 import { useFood } from 'food';
+import { fetchIngredients, postIngredient } from 'requests';
 
 const useStyles = makeStyles({
   root: {
@@ -29,17 +30,13 @@ const IngredientsPanel = () => {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('');
 
-  const food = useFood();
+  const { ingredients, setIngredients } = useFood();
 
-  console.log(food.state);
-
-  const refreshFood = () =>
-    axios.get('http://localhost:4001/ingredients').then(({ data }) => {
-      food.setFood({ ...food.state, ingredients: data });
-    });
+  const refreshIngredients = () =>
+    fetchIngredients().then((newIngredients) => setIngredients(newIngredients));
 
   useEffect(() => {
-    refreshFood();
+    refreshIngredients();
   }, []); // eslint-disable-line
 
   return (
@@ -50,7 +47,7 @@ const IngredientsPanel = () => {
         </Typography>
         <Typography variant="body2" component="span">
           <ul>
-            {food.state.ingredients.map(({ name, emoji }) => (
+            {ingredients.map(({ name, emoji }) => (
               <li key={name}>
                 {name} {emoji}
               </li>
@@ -64,13 +61,11 @@ const IngredientsPanel = () => {
           className={classes.form}
           onSubmit={(ev) => {
             ev.preventDefault();
-            axios
-              .post('http://localhost:4001/ingredients', { name, emoji })
-              .then(() => {
-                refreshFood();
-                setName('');
-                setEmoji('');
-              });
+            postIngredient({ name, emoji }).then(() => {
+              refreshIngredients();
+              setName('');
+              setEmoji('');
+            });
           }}
         >
           <TextField
