@@ -13,7 +13,9 @@ import FormControl from '@material-ui/core/FormControl';
 import Select from '@material-ui/core/Select';
 import { fetchSandwiches, postSandwich } from 'requests';
 import { useFood } from 'food';
-import { Ingredient } from 'types';
+
+const isNonNullish = <T extends any>(value: T | undefined | null): value is T =>
+  value !== undefined && value !== null;
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -30,14 +32,15 @@ const useStyles = makeStyles((theme) => ({
 const SandwichesPanel = () => {
   const classes = useStyles();
 
-  const [foo, setFoo] = useState<Ingredient>({ name: '', emoji: '' });
-
   const [name, setName] = useState('');
-  const [bread, setBread] = useState<Ingredient>({ name: '', emoji: '' });
-  const [condiments, setCondiments] = useState<Ingredient[]>([]);
-  const [layers, setLayers] = useState<Ingredient[]>([]);
+  const [bread, setBread] = useState<string>('');
+  const [condiments, setCondiments] = useState<string[]>(['']);
+  const [layers, setLayers] = useState<string[]>(['']);
 
   const { ingredients, sandwiches, setSandwiches } = useFood();
+
+  const findIngredient = (name: string) =>
+    ingredients.find((ingredient) => ingredient.name === name);
 
   const refreshSandwiches = () =>
     fetchSandwiches().then((newSandwiches) => setSandwiches(newSandwiches));
@@ -50,7 +53,7 @@ const SandwichesPanel = () => {
     <MenuItem key="none" value="">
       <em>None</em>
     </MenuItem>,
-    ...ingredients.map(({ name, emoji }) => (
+    ...ingredients.map(({ name, emoji }, idx) => (
       <MenuItem key={name} value={name}>
         {name} {emoji}
       </MenuItem>
@@ -65,31 +68,7 @@ const SandwichesPanel = () => {
         </Typography>
         <Typography variant="body2" component="span">
           <ul>
-            {[
-              {
-                name: 'BLT',
-                bread: { name: 'sourdough', emoji: '🍞' },
-                condiments: [
-                  { name: 'ketchup', emoji: '🍅' },
-                  { name: 'mustard', emoji: '🌭' },
-                ],
-                layers: [
-                  { name: 'bacon', emoji: '🥓' },
-                  { name: 'lettuce', emoji: '🥬' },
-                  { name: 'tomato', emoji: '🍅' },
-                ],
-              },
-              {
-                name: 'French Dip',
-                bread: { name: 'baguette', emoji: '🥖' },
-                condiments: [{ name: 'beef broth', emoji: '🐄' }],
-                layers: [
-                  { name: 'onion', emoji: '😢' },
-                  { name: 'cheese', emoji: '🧀' },
-                  { name: 'beef', emoji: '🥩' },
-                ],
-              },
-            ].map(({ name, bread, condiments, layers }) => (
+            {sandwiches.map(({ name, bread, condiments, layers }) => (
               <li key={name}>
                 {name} - {bread.name} {bread.emoji}
               </li>
@@ -103,12 +82,17 @@ const SandwichesPanel = () => {
           className={classes.form}
           onSubmit={(ev) => {
             ev.preventDefault();
-            postSandwich({ name, bread, condiments, layers }).then(() => {
+            postSandwich({
+              name,
+              bread: findIngredient(bread)!,
+              condiments: condiments.map(findIngredient).filter(isNonNullish),
+              layers: layers.map(findIngredient).filter(isNonNullish),
+            }).then(() => {
               refreshSandwiches();
               setName('');
-              setBread({ name: '', emoji: '' });
-              setCondiments([]);
-              setLayers([]);
+              setBread('');
+              setCondiments(['']);
+              setLayers(['']);
             });
           }}
         >
@@ -151,54 +135,40 @@ const SandwichesPanel = () => {
                 justifyContent: 'flex-start',
               }}
             >
-              {condiments
-                .concat({ name: '', emoji: '' })
-                .map((condiment, idx) => (
-                  <FormControl
-                    key={`condiment-${idx}`}
+              {condiments.map((condiment, idx) => (
+                <FormControl
+                  key={`condiment-${idx}`}
+                  variant="outlined"
+                  size="small"
+                  style={{ width: '100%', marginBottom: '16px' }}
+                >
+                  <InputLabel id={`condiment-${idx}-label`}>
+                    Condiment {idx}
+                  </InputLabel>
+                  <Select
+                    id={`condiment-${idx}`}
+                    label={`Condiment ${idx}`}
+                    labelId={`condiment-${idx}-label`}
+                    value={condiment}
+                    onChange={(ev) => {
+                      const condimentName = ev.target.value as string;
+
+                      const newCondiments = condiments.map((c, cIdx) =>
+                        cIdx === idx ? condimentName : c,
+                      );
+
+                      if (idx === condiments.length - 1) {
+                        setCondiments(newCondiments.concat(''));
+                      } else {
+                        setCondiments(newCondiments);
+                      }
+                    }}
                     variant="outlined"
-                    size="small"
-                    style={{ width: '100%', marginBottom: '16px' }}
                   >
-                    <InputLabel id={`condiment-${idx}-label`}>
-                      Condiment {idx}
-                    </InputLabel>
-                    <Select
-                      id={`condiment-${idx}`}
-                      label={`Condiment ${idx}`}
-                      labelId={`condiment-${idx}-label`}
-                      value={condiment}
-                      // value={condiment.name.replace(/ /, '_')}
-                      // value="foo bar"
-                      onChange={(ev) => {
-                        const condimentName = ev.target.value as string;
-
-                        console.log(condimentName);
-                        console.log(condiment);
-                        console.log('------');
-                        console.log(bread);
-
-                        const condimentX = condiments.find(
-                          (c) => c.name === condimentName,
-                        )!;
-                        if (idx === condiments.length) {
-                          const newCondiments = condiments.map((c, cIdx) =>
-                            cIdx === idx ? condimentX : c,
-                          );
-                          setCondiments(newCondiments);
-                          // setCondiments(
-                          //   newCondiments.concat({ name: '', emoji: '' }),
-                          // );
-                        }
-                      }}
-                      // value={foo}
-                      // onChange={(ev) => setFoo(ev.target.value as any)}
-                      variant="outlined"
-                    >
-                      {ingredientMenuItems}
-                    </Select>
-                  </FormControl>
-                ))}
+                    {ingredientMenuItems}
+                  </Select>
+                </FormControl>
+              ))}
             </div>
 
             <div style={{ width: '16px' }} />
@@ -211,7 +181,7 @@ const SandwichesPanel = () => {
                 justifyContent: 'flex-start',
               }}
             >
-              {layers.concat({ name: '', emoji: '' }).map((layer, idx) => (
+              {layers.map((layer, idx) => (
                 <FormControl
                   key={`layer-${idx}`}
                   variant="outlined"
@@ -224,9 +194,17 @@ const SandwichesPanel = () => {
                     label={`Layer ${idx}`}
                     labelId={`layer-${idx}-label`}
                     value={layer}
-                    onChange={() => {
-                      if (idx === layers.length) {
-                        setLayers(layers.concat({ name: '', emoji: '' }));
+                    onChange={(ev) => {
+                      const layerName = ev.target.value as string;
+
+                      const newLayers = layers.map((l, lIdx) =>
+                        lIdx === idx ? layerName : l,
+                      );
+
+                      if (idx === layers.length - 1) {
+                        setLayers(newLayers.concat(''));
+                      } else {
+                        setLayers(newLayers);
                       }
                     }}
                     variant="outlined"
