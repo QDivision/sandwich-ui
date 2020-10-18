@@ -71,6 +71,13 @@ const SandwichesPanel = () => {
             {sandwiches.map(({ name, bread, condiments, layers }) => (
               <li key={name}>
                 {name} - {bread.name} {bread.emoji}
+                <ul>
+                  {[...condiments, ...layers].map(({ name, emoji }, idx) => (
+                    <li key={idx}>
+                      {name} {emoji}
+                    </li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>
